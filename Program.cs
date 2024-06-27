@@ -1,4 +1,5 @@
 ﻿using NetworkMan;
+using System;
 using System.Net.Sockets;
 using System.Text;
 
@@ -8,9 +9,19 @@ namespace Hereness_server
 	{
 		static void Main(string[] args)
 		{
+			new PacketManager();
 			new Entry("register");
 			Entry.Load();
+			PacketManager.Instance.RegisterPacketHandler((int)PacketId.Message, SendMessage);
 			(ChatServer.Instance = new ChatServer()).Start(8000);
+		}
+		public static void SendMessage(Packet packet, UdpClient u)
+		{
+			byte[] buffer = packet.MessageIntoBytes();
+			foreach (var item in ChatServer.Instance._client)
+			{
+				u.Send(buffer, buffer.Length, item.remoteEndpoint);
+			}
 		}
 	}
 	public class ChatServer : Server
@@ -18,6 +29,11 @@ namespace Hereness_server
 		public static ChatServer? Instance;
 		public override void HandleMessage(Packet packet, Entry e, UdpClient u)
 		{
+			try
+			{ 
+				PacketManager.Instance.HandleIncomingPacket(packet, u);
+			}
+			catch { }
 			string status = "";
 			byte[] buffer = default;
 			switch (packet.Id)
@@ -38,11 +54,11 @@ namespace Hereness_server
 					u.Send(buffer, buffer.Length, e.remoteEndpoint);
 					break;
 				case (int)PacketId.Message:
-					buffer = packet.MessageIntoBytes();
-					foreach (var item in Instance._client)
-					{
-						u.Send(buffer, buffer.Length, item.remoteEndpoint);
-					}
+					//buffer = packet.MessageIntoBytes();
+					//foreach (var item in Instance._client)
+					//{
+					//	u.Send(buffer, buffer.Length, item.remoteEndpoint);
+					//}
 					break;
 			}
 		}
